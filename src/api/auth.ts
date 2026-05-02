@@ -29,8 +29,11 @@ function normalizeUser(data: Record<string, unknown> | undefined | null): AuthUs
     name: String(nested.name || nested.company_name || ""),
     email: String(nested.email || nested.company_email || ""),
     company_name: nested.company_name ? String(nested.company_name) : undefined,
-    profile_image: (nested.profile_image as string) || (nested.profile_photo as string) || null,
+    profile_image: (nested.profile_image as string) || null,
+    profile_photo: (nested.profile_photo as string) || null,
+    profile_photo_url: (nested.profile_photo_url as string) || (nested.profile_image_url as string) || null,
     company_logo: (nested.company_logo as string) || null,
+    company_logo_url: (nested.company_logo_url as string) || null,
     status: nested.status ? String(nested.status) : undefined,
   };
 }

@@ -6,7 +6,10 @@ export interface AuthUser {
   email?: string;
   company_name?: string;
   profile_image?: string | null;
+  profile_photo?: string | null;
+  profile_photo_url?: string | null;
   company_logo?: string | null;
+  company_logo_url?: string | null;
   status?: string;
 }
 

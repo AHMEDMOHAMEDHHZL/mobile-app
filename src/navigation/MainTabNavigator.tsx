@@ -15,15 +15,20 @@ import { ProfileScreen } from "../screens/ProfileScreen";
 import { StoreScreen } from "../screens/StoreScreen";
 import { NotificationsScreen } from "../screens/NotificationsScreen";
 import { AdminScreen } from "../screens/AdminScreen";
+import { MessagesScreen } from "../screens/MessagesScreen";
+import { CommunityScreen } from "../screens/CommunityScreen";
 import { typography, spacing, radius } from "../theme";
 import { useTheme } from "../providers/ThemeProvider";
 import { useAuth } from "../auth/AuthContext";
+import { firstMediaUrl } from "../utils/media";
 
 export type MainTabParamList = {
   Home: undefined;
   Services: undefined;
   Orders: undefined;
   Store: undefined;
+  Community: undefined;
+  Messages: undefined;
   Wallet: undefined;
   Notifications: undefined;
   Admin: undefined;
@@ -41,6 +46,8 @@ const BASE_TABS = [
   { name: "Services" as const, label: "الخدمات",  icon: "🔧" },
   { name: "Orders"   as const, label: "طلباتي",   icon: "📋" },
   { name: "Store"    as const, label: "المتجر",   icon: "🛒" },
+  { name: "Community" as const, label: "السوق", icon: "🧰" },
+  { name: "Messages" as const, label: "الشات", icon: "💬" },
   { name: "Wallet"   as const, label: "المحفظة",  icon: "💰" },
   { name: "Notifications" as const, label: "تنبيهات", icon: "🔔" },
   { name: "Profile"  as const, label: "حسابي",    icon: "👤" },
@@ -54,12 +61,21 @@ function AppHeader({ routeName }: { routeName: string }) {
   const { user } = useAuth();
   const { colors } = useTheme();
   const hStyles = getHStyles(colors);
+  const avatarUrl = firstMediaUrl(
+    user?.profile_photo_url,
+    user?.profile_photo,
+    user?.profile_image,
+    user?.company_logo_url,
+    user?.company_logo
+  );
 
   const pageTitles: Record<string, string> = {
     Home:     "",
     Services: "الخدمات",
     Orders:   "طلباتي",
     Store:    "المتجر",
+    Community: "سوق الطلبات",
+    Messages: "الشات",
     Wallet:   "المحفظة",
     Notifications: "الإشعارات",
     Admin: "الإدارة",
@@ -84,9 +100,13 @@ function AppHeader({ routeName }: { routeName: string }) {
 
       {/* Left: User greeting / avatar */}
       <View style={hStyles.userBadge}>
-        <Text style={hStyles.userInitial}>
-          {(user?.name || (user as any)?.company_name || "م").charAt(0)}
-        </Text>
+        {avatarUrl ? (
+          <Image source={{ uri: avatarUrl }} style={hStyles.userImage} resizeMode="cover" />
+        ) : (
+          <Text style={hStyles.userInitial}>
+            {(user?.name || (user as any)?.company_name || "م").charAt(0)}
+          </Text>
+        )}
       </View>
     </View>
   );
@@ -137,12 +157,14 @@ const getHStyles = (colors: any) => StyleSheet.create({
     justifyContent: "center",
     borderWidth: 2,
     borderColor: "rgba(255,255,255,0.3)",
+    overflow: "hidden",
   },
   userInitial: {
     color: "#FFF",
     fontFamily: typography.bold,
     fontSize: 16,
   },
+  userImage: { width: "100%", height: "100%" },
 });
 
 // ─── Tab icon component
@@ -168,7 +190,7 @@ export function MainTabNavigator() {
   const { userType } = useAuth();
   const tabStyles = getTabStyles(colors);
   const tabs = userType === "admin"
-    ? [BASE_TABS[0], ADMIN_TAB, BASE_TABS[1], BASE_TABS[2], BASE_TABS[3], BASE_TABS[5], BASE_TABS[6]]
+    ? [BASE_TABS[0], ADMIN_TAB, BASE_TABS[5], BASE_TABS[4], BASE_TABS[1], BASE_TABS[2], BASE_TABS[8]]
     : BASE_TABS;
   return (
     <Tab.Navigator
@@ -193,6 +215,8 @@ export function MainTabNavigator() {
       <Tab.Screen name="Services" component={ServicesScreen} />
       <Tab.Screen name="Orders"   component={OrdersScreen}   />
       <Tab.Screen name="Store"    component={StoreScreen}    />
+      <Tab.Screen name="Community" component={CommunityScreen} />
+      <Tab.Screen name="Messages" component={MessagesScreen} />
       {userType !== "admin" && <Tab.Screen name="Wallet" component={WalletScreen} />}
       <Tab.Screen name="Notifications" component={NotificationsScreen} />
       {userType === "admin" && <Tab.Screen name="Admin" component={AdminScreen} />}

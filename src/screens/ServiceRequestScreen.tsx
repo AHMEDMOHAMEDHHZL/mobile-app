@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Pressable, View, Text, StyleSheet, Alert } from "react-native";
+import { Pressable, View, Text, StyleSheet, Alert, Platform } from "react-native";
 import { useRoute, useNavigation } from "@react-navigation/native";
 import { Screen } from "../components/Screen";
 import { SectionCard } from "../components/SectionCard";
@@ -23,7 +23,32 @@ export function ServiceRequestScreen() {
   const [desc, setDesc] = useState("");
   const [amount, setAmount] = useState("");
   const [paymentMethod, setPaymentMethod] = useState("wallet");
+  const [coords, setCoords] = useState<{ latitude: number; longitude: number } | null>(null);
+  const [locating, setLocating] = useState(false);
   const [loading, setLoading] = useState(false);
+
+  const handleUseCurrentLocation = () => {
+    if (typeof navigator === "undefined" || !navigator.geolocation) {
+      Alert.alert("تنبيه", "تحديد الموقع غير مدعوم على هذا الجهاز حالياً");
+      return;
+    }
+
+    setLocating(true);
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        const latitude = Number(position.coords.latitude.toFixed(7));
+        const longitude = Number(position.coords.longitude.toFixed(7));
+        setCoords({ latitude, longitude });
+        setAddress((current) => current || `موقعي الحالي: ${latitude}, ${longitude}`);
+        setLocating(false);
+      },
+      () => {
+        Alert.alert("تعذر تحديد الموقع", "اسمح للتطبيق باستخدام موقعك ثم حاول مرة أخرى");
+        setLocating(false);
+      },
+      { enableHighAccuracy: true, timeout: 12000, maximumAge: 60000 }
+    );
+  };
 
   const handleSubmit = async () => {
     const normalizedTime = normalizeTime(time);
@@ -61,6 +86,8 @@ export function ServiceRequestScreen() {
         service_type: serviceId,
         province,
         address,
+        latitude: coords?.latitude,
+        longitude: coords?.longitude,
         date,
         time: normalizedTime,
         problem_description: desc,
@@ -96,6 +123,14 @@ export function ServiceRequestScreen() {
             value={address}
             onChangeText={setAddress}
           />
+          <Pressable style={styles.locationButton} onPress={handleUseCurrentLocation} disabled={locating}>
+            <Text style={styles.locationButtonText}>
+              {locating ? "جاري تحديد الموقع..." : coords ? "تم تحديد الموقع" : "تحديد موقعي الحالي"}
+            </Text>
+          </Pressable>
+          {coords ? (
+            <Text style={styles.coordsText}>{coords.latitude}, {coords.longitude}</Text>
+          ) : null}
           <View style={{ flexDirection: 'row', gap: spacing.md }}>
             <View style={{ flex: 1 }}>
               <InputField
@@ -197,5 +232,16 @@ const getStyles = (colors: any) => StyleSheet.create({
   paymentActive: { borderColor: colors.primary, backgroundColor: "rgba(95,168,211,0.1)" },
   paymentText: { fontFamily: typography.semiBold, color: colors.textMuted },
   paymentTextActive: { color: colors.primary },
+  locationButton: {
+    borderWidth: 1,
+    borderColor: colors.primary,
+    borderRadius: 12,
+    padding: spacing.md,
+    alignItems: "center",
+    backgroundColor: Platform.OS === "web" ? "rgba(95,168,211,0.08)" : "transparent",
+    marginBottom: spacing.sm,
+  },
+  locationButtonText: { fontFamily: typography.bold, color: colors.primary },
+  coordsText: { fontFamily: typography.regular, color: colors.textMuted, textAlign: "right", marginBottom: spacing.sm },
   submitBtn: { marginTop: spacing.md },
 });

@@ -5,7 +5,7 @@ import { useEffect, useState, useRef } from "react";
 import {
   View, Text, StyleSheet, ScrollView, Pressable,
   RefreshControl, Animated, Dimensions,
-  ImageBackground,
+  ImageBackground, TextInput, Alert,
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { useNavigation } from "@react-navigation/native";
@@ -15,6 +15,7 @@ import { useAuth } from "../auth/AuthContext";
 import { LoadingState } from "../components/StateViews";
 import { getServices, type Service } from "../api/services";
 import { getTechnicians, type Technician } from "../api/technicians";
+import { createServiceRequest } from "../api/orders";
 import { ServiceCardItem, TechCard } from "./ServicesScreen";
 import { spacing, typography, radius } from "../theme";
 import { useTheme } from "../providers/ThemeProvider";
@@ -79,6 +80,16 @@ export function HomeScreen() {
   const [loading, setLoading]         = useState(true);
   const [refreshing, setRefreshing]   = useState(false);
   const [slideIdx, setSlideIdx]       = useState(0);
+  const [quickServiceId, setQuickServiceId] = useState<number | null>(null);
+  const [quickTechId, setQuickTechId] = useState<number | null>(null);
+  const [quickTechOptions, setQuickTechOptions] = useState<Technician[]>([]);
+  const [quickProvince, setQuickProvince] = useState("");
+  const [quickAddress, setQuickAddress] = useState("");
+  const [quickDate, setQuickDate] = useState("");
+  const [quickTime, setQuickTime] = useState("");
+  const [quickAmount, setQuickAmount] = useState("");
+  const [quickDesc, setQuickDesc] = useState("");
+  const [quickSubmitting, setQuickSubmitting] = useState(false);
   const fadeAnim = useRef(new Animated.Value(1)).current;
 
   const fetchData = async () => {
@@ -104,6 +115,17 @@ export function HomeScreen() {
 
   useEffect(() => { fetchData(); }, []);
 
+  useEffect(() => {
+    if (!quickServiceId) {
+      setQuickTechOptions([]);
+      return;
+    }
+
+    getTechnicians(quickServiceId)
+      .then((rows) => setQuickTechOptions(rows))
+      .catch(() => setQuickTechOptions([]));
+  }, [quickServiceId]);
+
   // Auto-slide every 6 s
   useEffect(() => {
     const t = setInterval(() => {
@@ -118,6 +140,48 @@ export function HomeScreen() {
 
   const displayName = user?.name || (user as any)?.company_name || "عزيزي المستخدم";
   const slide = SLIDES[slideIdx];
+  const quickTechnicians = quickServiceId
+    ? (quickTechOptions.length > 0 ? quickTechOptions : technicians.filter((tech) => tech.service_id === quickServiceId || tech.service?.id === quickServiceId))
+    : technicians;
+
+  const submitQuickRequest = async () => {
+    const serviceId = quickServiceId;
+    const technicianId = quickTechId || quickTechnicians[0]?.id;
+    const amount = Number(quickAmount);
+    if (!serviceId || !technicianId || !quickProvince || !quickAddress || !quickDate || !quickTime || !quickDesc || !amount) {
+      Alert.alert("تنبيه", "اكمل بيانات طلب الخدمة السريع");
+      return;
+    }
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(quickDate) || !/^\d{1,2}:\d{2}$/.test(quickTime)) {
+      Alert.alert("تنبيه", "اكتب التاريخ 2026-05-02 والوقت 10:00");
+      return;
+    }
+    setQuickSubmitting(true);
+    try {
+      await createServiceRequest({
+        service_type: serviceId,
+        craftsman_id: technicianId,
+        province: quickProvince,
+        address: quickAddress,
+        date: quickDate,
+        time: quickTime.padStart(5, "0"),
+        requested_amount: amount,
+        problem_description: quickDesc,
+        payment_method: "cash",
+      });
+      Alert.alert("تم", "تم إرسال طلب الخدمة بنجاح");
+      setQuickProvince("");
+      setQuickAddress("");
+      setQuickDate("");
+      setQuickTime("");
+      setQuickAmount("");
+      setQuickDesc("");
+    } catch (e: any) {
+      Alert.alert("خطأ", e?.message || "فشل إرسال الطلب");
+    } finally {
+      setQuickSubmitting(false);
+    }
+  };
 
   if (loading) return <LoadingState />;
 
@@ -258,6 +322,48 @@ export function HomeScreen() {
               onPress={() => tabNavigation.navigate("Services")}
             >
               <Text style={styles.servicesCtaText}>عرض كل الخدمات</Text>
+            </Pressable>
+          </View>
+        )}
+
+        {userType !== "admin" && services.length > 0 && (
+          <View style={styles.quickRequestSection}>
+            <View style={styles.servicesHeading}>
+              <Text style={styles.servicesEyebrow}>طلب خدمة</Text>
+              <Text style={[styles.servicesTitle, { color: colors.textHeading }]}>اطلب صنايعي من الصفحة الرئيسية</Text>
+            </View>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.quickPills}>
+              {services.map((service) => (
+                <Pressable
+                  key={service.id}
+                  style={[styles.quickPill, quickServiceId === service.id && styles.quickPillActive]}
+                  onPress={() => { setQuickServiceId(service.id); setQuickTechId(null); }}
+                >
+                  <Text style={[styles.quickPillText, quickServiceId === service.id && styles.quickPillTextActive]}>{service.name}</Text>
+                </Pressable>
+              ))}
+            </ScrollView>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.quickPills}>
+              {quickTechnicians.slice(0, 10).map((tech) => (
+                <Pressable
+                  key={tech.id}
+                  style={[styles.techPill, (quickTechId || quickTechnicians[0]?.id) === tech.id && styles.quickPillActive]}
+                  onPress={() => setQuickTechId(tech.id)}
+                >
+                  <Text style={[styles.quickPillText, (quickTechId || quickTechnicians[0]?.id) === tech.id && styles.quickPillTextActive]}>{tech.name}</Text>
+                </Pressable>
+              ))}
+            </ScrollView>
+            <TextInput style={styles.quickInput} value={quickProvince} onChangeText={setQuickProvince} placeholder="المحافظة" placeholderTextColor={colors.textMuted} textAlign="right" />
+            <TextInput style={styles.quickInput} value={quickAddress} onChangeText={setQuickAddress} placeholder="العنوان بالتفصيل" placeholderTextColor={colors.textMuted} textAlign="right" />
+            <View style={styles.quickRow}>
+              <TextInput style={[styles.quickInput, styles.quickFlex]} value={quickTime} onChangeText={setQuickTime} placeholder="10:00" placeholderTextColor={colors.textMuted} textAlign="right" />
+              <TextInput style={[styles.quickInput, styles.quickFlex]} value={quickDate} onChangeText={setQuickDate} placeholder="2026-05-02" placeholderTextColor={colors.textMuted} textAlign="right" />
+            </View>
+            <TextInput style={styles.quickInput} value={quickAmount} onChangeText={setQuickAmount} placeholder="الميزانية المتوقعة" placeholderTextColor={colors.textMuted} keyboardType="numeric" textAlign="right" />
+            <TextInput style={[styles.quickInput, styles.quickArea]} value={quickDesc} onChangeText={setQuickDesc} placeholder="وصف المشكلة" placeholderTextColor={colors.textMuted} multiline textAlign="right" />
+            <Pressable style={[styles.quickSubmit, quickSubmitting && { opacity: 0.6 }]} onPress={submitQuickRequest} disabled={quickSubmitting}>
+              <Text style={styles.quickSubmitText}>{quickSubmitting ? "جاري الإرسال..." : "إرسال طلب الخدمة"}</Text>
             </Pressable>
           </View>
         )}
@@ -627,6 +733,78 @@ const getStyles = (colors: any) => StyleSheet.create({
   },
   servicesCtaText: {
     color: "#FFF",
+    fontFamily: typography.bold,
+    fontSize: typography.body,
+  },
+
+  quickRequestSection: {
+    backgroundColor: colors.bgApp,
+    borderRadius: radius.card,
+    padding: spacing.lg,
+    gap: spacing.md,
+    borderWidth: 1,
+    borderColor: colors.borderLight,
+    boxShadow: "0 2px 10px rgba(11,30,51,0.06)",
+  },
+  quickPills: {
+    flexDirection: "row-reverse",
+    gap: spacing.sm,
+  },
+  quickPill: {
+    backgroundColor: colors.bgSection,
+    borderRadius: radius.full,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    borderWidth: 1,
+    borderColor: colors.borderLight,
+  },
+  techPill: {
+    backgroundColor: colors.bgSection,
+    borderRadius: radius.cardSm,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    borderWidth: 1,
+    borderColor: colors.borderLight,
+  },
+  quickPillActive: {
+    backgroundColor: colors.navyDeep,
+    borderColor: colors.navyDeep,
+  },
+  quickPillText: {
+    fontFamily: typography.semiBold,
+    fontSize: typography.small,
+    color: colors.textMuted,
+  },
+  quickPillTextActive: {
+    color: colors.white,
+  },
+  quickInput: {
+    backgroundColor: colors.bgSection,
+    borderRadius: radius.cardSm,
+    borderWidth: 1,
+    borderColor: colors.borderLight,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    color: colors.textBase,
+    fontFamily: typography.regular,
+  },
+  quickArea: {
+    minHeight: 86,
+    textAlignVertical: "top",
+  },
+  quickRow: {
+    flexDirection: "row",
+    gap: spacing.sm,
+  },
+  quickFlex: { flex: 1 },
+  quickSubmit: {
+    backgroundColor: colors.primary,
+    borderRadius: radius.cardSm,
+    paddingVertical: spacing.md,
+    alignItems: "center",
+  },
+  quickSubmitText: {
+    color: colors.white,
     fontFamily: typography.bold,
     fontSize: typography.body,
   },

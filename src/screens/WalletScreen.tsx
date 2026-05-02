@@ -27,8 +27,8 @@ function formatDate(str: string) {
 }
 
 function TransactionRow({ tx }: { tx: Transaction }) {
-  const { colors } = useTheme();
-  const txStyles = getTxStyles(colors);
+  const { colors, isDark } = useTheme();
+  const txStyles = getTxStyles(colors, isDark);
   const isCredit = tx.type === "credit";
   return (
     <View style={txStyles.row}>
@@ -40,7 +40,7 @@ function TransactionRow({ tx }: { tx: Transaction }) {
       </View>
       <View style={txStyles.right}>
         <Text style={txStyles.desc} numberOfLines={1}>{tx.description}</Text>
-        <View style={[txStyles.badge, { backgroundColor: isCredit ? "#E8F5E9" : "#FFEBEE" }]}>
+        <View style={[txStyles.badge, isCredit ? txStyles.creditBadge : txStyles.debitBadge]}>
           <Text style={[txStyles.badgeTxt, { color: isCredit ? colors.success : colors.error }]}>
             {isCredit ? "إيداع" : "خصم"}
           </Text>
@@ -50,7 +50,7 @@ function TransactionRow({ tx }: { tx: Transaction }) {
   );
 }
 
-const getTxStyles = (colors: any) => StyleSheet.create({
+const getTxStyles = (colors: any, isDark: boolean) => StyleSheet.create({
   row: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", paddingVertical: spacing.md, borderBottomWidth: 1, borderBottomColor: colors.borderLight },
   left: { alignItems: "flex-start", gap: 2 },
   right: { alignItems: "flex-end", gap: 4, flex: 1, marginRight: spacing.md },
@@ -58,13 +58,15 @@ const getTxStyles = (colors: any) => StyleSheet.create({
   date: { fontFamily: typography.regular, fontSize: typography.tiny, color: colors.textMuted },
   desc: { fontFamily: typography.regular, fontSize: typography.small, color: colors.textBase, textAlign: "right" },
   badge: { paddingHorizontal: spacing.sm, paddingVertical: 2, borderRadius: radius.full },
+  creditBadge: { backgroundColor: isDark ? "rgba(76,175,80,0.16)" : "#E8F5E9" },
+  debitBadge: { backgroundColor: isDark ? "rgba(244,67,54,0.16)" : "#FFEBEE" },
   badgeTxt: { fontFamily: typography.semiBold, fontSize: typography.tiny },
 });
 
 // ─── Main Screen ─────────────────────────────────────────────────────────────
 export function WalletScreen() {
   const { colors, isDark } = useTheme();
-  const styles = getStyles(colors);
+  const styles = getStyles(colors, isDark);
   const { userType } = useAuth();
 
   const [overview, setOverview]   = useState<WalletOverview | null>(null);
@@ -160,7 +162,7 @@ export function WalletScreen() {
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => { setRefresh(true); load(false); }} tintColor={colors.primary} />}
       >
         {/* ── Balance Card ── */}
-        <LinearGradient colors={[colors.navyDeep, "#1a4a6e"]} style={styles.balanceCard}>
+        <LinearGradient colors={isDark ? ["#101827", "#16324a"] : [colors.navyDeep, "#1a4a6e"]} style={styles.balanceCard}>
           <Text style={styles.balanceLabel}>الرصيد الكلي</Text>
           <Text style={styles.balanceAmount}>{Number(balance).toFixed(2)} ج</Text>
           <View style={styles.subBalRow}>
@@ -215,7 +217,11 @@ export function WalletScreen() {
                     d.status === "approved" && styles.depApproved,
                     d.status === "rejected" && styles.depRejected,
                   ]}>
-                    <Text style={styles.depBadgeText}>
+                    <Text style={[
+                      styles.depBadgeText,
+                      d.status === "approved" && styles.depApprovedText,
+                      d.status === "rejected" && styles.depRejectedText,
+                    ]}>
                       {d.status === "approved" ? "✅ مقبول" : d.status === "rejected" ? "❌ مرفوض" : "⏳ قيد المراجعة"}
                     </Text>
                   </View>
@@ -274,7 +280,7 @@ export function WalletScreen() {
   );
 }
 
-const getStyles = (colors: any) => StyleSheet.create({
+const getStyles = (colors: any, isDark: boolean) => StyleSheet.create({
   balanceCard: {
     paddingHorizontal: spacing.xl,
     paddingTop: spacing.xxl,
@@ -289,13 +295,15 @@ const getStyles = (colors: any) => StyleSheet.create({
   subBalLabel: { fontFamily: typography.regular, fontSize: typography.tiny, color: "rgba(255,255,255,0.6)" },
   subBalAmt: { fontFamily: typography.bold, fontSize: typography.body, color: colors.white },
   divider: { width: 1, height: 30, backgroundColor: "rgba(255,255,255,0.2)" },
-  body: { padding: spacing.lg, gap: spacing.lg },
+  body: { padding: spacing.lg, gap: spacing.lg, backgroundColor: colors.bgSection },
   actionRow: { flexDirection: "row", gap: spacing.md },
   actionBtn: {
-    flex: 1, backgroundColor: colors.white, borderRadius: radius.card,
+    flex: 1, backgroundColor: colors.bgApp, borderRadius: radius.card,
     padding: spacing.lg, alignItems: "center", gap: spacing.sm,
+    borderWidth: 1,
+    borderColor: colors.borderLight,
     elevation: 2,
-    boxShadow: "0 2px 6px rgba(11,30,51,0.06)",
+    boxShadow: isDark ? "0 2px 10px rgba(0,0,0,0.28)" : "0 2px 6px rgba(11,30,51,0.06)",
   },
   actionIcon: { fontSize: 28 },
   actionLabel: { fontFamily: typography.semiBold, fontSize: typography.small, color: colors.textHeading },
@@ -306,19 +314,23 @@ const getStyles = (colors: any) => StyleSheet.create({
   depositRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", paddingVertical: spacing.sm, borderBottomWidth: 1, borderBottomColor: colors.borderLight },
   depositAmt: { fontFamily: typography.bold, fontSize: typography.body, color: colors.textBase },
   depositDate: { fontFamily: typography.regular, fontSize: typography.tiny, color: colors.textMuted },
-  depBadge: { paddingHorizontal: spacing.sm, paddingVertical: spacing.xs, borderRadius: radius.full, backgroundColor: "#FFF8E1" },
-  depApproved: { backgroundColor: "#E8F5E9" },
-  depRejected: { backgroundColor: "#FFEBEE" },
-  depBadgeText: { fontFamily: typography.semiBold, fontSize: typography.tiny, color: colors.textBase },
+  depBadge: { paddingHorizontal: spacing.sm, paddingVertical: spacing.xs, borderRadius: radius.full, backgroundColor: isDark ? "rgba(255,193,7,0.16)" : "#FFF8E1" },
+  depApproved: { backgroundColor: isDark ? "rgba(76,175,80,0.16)" : "#E8F5E9" },
+  depRejected: { backgroundColor: isDark ? "rgba(244,67,54,0.16)" : "#FFEBEE" },
+  depBadgeText: { fontFamily: typography.semiBold, fontSize: typography.tiny, color: isDark ? colors.warning : colors.textBase },
+  depApprovedText: { color: colors.success },
+  depRejectedText: { color: colors.error },
   emptyTx: { fontFamily: typography.regular, fontSize: typography.small, color: colors.textMuted, textAlign: "center", paddingVertical: spacing.lg },
   createWallet: { flex: 1, alignItems: "center", justifyContent: "center", padding: spacing.xxl, gap: spacing.lg },
   createIcon: { fontSize: 64 },
   createTitle: { fontFamily: typography.bold, fontSize: typography.h2, color: colors.textHeading, textAlign: "center" },
   createDesc: { fontFamily: typography.regular, fontSize: typography.body, color: colors.textMuted, textAlign: "center", lineHeight: 24 },
-  modalOverlay: { flex: 1, backgroundColor: "rgba(0,0,0,0.4)", justifyContent: "flex-end" },
+  modalOverlay: { flex: 1, backgroundColor: isDark ? "rgba(0,0,0,0.70)" : "rgba(0,0,0,0.4)", justifyContent: "flex-end" },
   modalSheet: {
-    backgroundColor: colors.white, borderTopLeftRadius: radius.xl, borderTopRightRadius: radius.xl,
+    backgroundColor: colors.bgApp, borderTopLeftRadius: radius.xl, borderTopRightRadius: radius.xl,
     padding: spacing.xl, gap: spacing.lg, paddingBottom: spacing.xxxl,
+    borderWidth: 1,
+    borderColor: colors.borderLight,
   },
   modalHandle: { width: 40, height: 4, backgroundColor: colors.borderMedium, borderRadius: 2, alignSelf: "center", marginBottom: spacing.sm },
   modalTitle: { fontFamily: typography.bold, fontSize: typography.h3, color: colors.textHeading, textAlign: "right" },
