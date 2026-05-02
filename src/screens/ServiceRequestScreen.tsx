@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { View, Text, StyleSheet, Alert } from "react-native";
+import { Pressable, View, Text, StyleSheet, Alert } from "react-native";
 import { useRoute, useNavigation } from "@react-navigation/native";
 import { Screen } from "../components/Screen";
 import { SectionCard } from "../components/SectionCard";
@@ -26,8 +26,31 @@ export function ServiceRequestScreen() {
   const [loading, setLoading] = useState(false);
 
   const handleSubmit = async () => {
+    const normalizedTime = normalizeTime(time);
+    const numericAmount = Number(String(amount).replace(/[^\d.]/g, ""));
+
+    if (!technicianId || !serviceId) {
+      Alert.alert("تنبيه", "بيانات الصنايعي أو الخدمة غير مكتملة. ارجع واختر الخدمة مرة أخرى.");
+      return;
+    }
+
     if (!province || !address || !date || !time || !desc || !amount) {
       Alert.alert("تنبيه", "يرجى ملء جميع الحقول المطلوبة");
+      return;
+    }
+
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+      Alert.alert("تنبيه", "اكتب التاريخ بصيغة صحيحة مثل 2026-05-02");
+      return;
+    }
+
+    if (!normalizedTime) {
+      Alert.alert("تنبيه", "اكتب الوقت بنظام 24 ساعة مثل 10:00 أو 18:30");
+      return;
+    }
+
+    if (!Number.isFinite(numericAmount) || numericAmount <= 0) {
+      Alert.alert("تنبيه", "اكتب مبلغاً صحيحاً أكبر من صفر");
       return;
     }
 
@@ -35,20 +58,20 @@ export function ServiceRequestScreen() {
     try {
       await createServiceRequest({
         craftsman_id: technicianId,
-        service_id: serviceId,
+        service_type: serviceId,
         province,
         address,
         date,
-        time,
+        time: normalizedTime,
         problem_description: desc,
-        requested_amount: amount,
+        requested_amount: numericAmount,
         payment_method: paymentMethod,
       });
       Alert.alert("تم بنجاح", "تم إرسال طلبك إلى الصنايعي", [
         { text: "حسناً", onPress: () => navigation.goBack() }
       ]);
     } catch (e: any) {
-      Alert.alert("خطأ", e.message || "فشل إرسال الطلب");
+      Alert.alert("خطأ", e?.message || e?.response?.data?.message || "فشل إرسال الطلب");
     } finally {
       setLoading(false);
     }
@@ -112,18 +135,18 @@ export function ServiceRequestScreen() {
 
           <Text style={styles.sectionHeader}>3. طريقة الدفع</Text>
           <View style={styles.paymentRow}>
-            <View 
-              onTouchEnd={() => setPaymentMethod("wallet")}
+            <Pressable
+              onPress={() => setPaymentMethod("wallet")}
               style={[styles.paymentOption, paymentMethod === "wallet" && styles.paymentActive]}
             >
               <Text style={[styles.paymentText, paymentMethod === "wallet" && styles.paymentTextActive]}>الدفع بالمحفظة</Text>
-            </View>
-            <View 
-              onTouchEnd={() => setPaymentMethod("cash")}
+            </Pressable>
+            <Pressable
+              onPress={() => setPaymentMethod("cash")}
               style={[styles.paymentOption, paymentMethod === "cash" && styles.paymentActive]}
             >
               <Text style={[styles.paymentText, paymentMethod === "cash" && styles.paymentTextActive]}>الدفع كاش</Text>
-            </View>
+            </Pressable>
           </View>
 
           <Button
@@ -138,12 +161,38 @@ export function ServiceRequestScreen() {
   );
 }
 
+function normalizeTime(value: string) {
+  const original = value.trim();
+  const isPm = /م|pm/i.test(original);
+  const isAm = /ص|am/i.test(original);
+  const trimmed = original
+    .replace("ص", "")
+    .replace("م", "")
+    .replace(/am|pm/ig, "")
+    .replace(/\s+/g, "");
+
+  const match = trimmed.match(/^(\d{1,2}):(\d{2})$/);
+  if (!match) return null;
+
+  let hour = Number(match[1]);
+  const minute = Number(match[2]);
+
+  if (hour < 0 || hour > 23 || minute < 0 || minute > 59) {
+    return null;
+  }
+
+  if (isPm && hour >= 1 && hour <= 11) hour += 12;
+  if (isAm && hour === 12) hour = 0;
+
+  return `${String(hour).padStart(2, "0")}:${String(minute).padStart(2, "0")}`;
+}
+
 const getStyles = (colors: any) => StyleSheet.create({
   container: { padding: spacing.lg },
   title: { fontFamily: typography.bold, fontSize: typography.h3, color: colors.textHeading, textAlign: "right", marginBottom: spacing.lg },
   sectionHeader: { fontFamily: typography.bold, fontSize: typography.body, color: colors.primary, textAlign: "right", marginTop: spacing.md, marginBottom: spacing.sm },
   textArea: { height: 100, textAlignVertical: "top" },
-  paymentRow: { flexDirection: "row", gap: spacing.md, marginBottom: spacing.md, direction: "rtl" },
+  paymentRow: { flexDirection: "row-reverse", gap: spacing.md, marginBottom: spacing.md },
   paymentOption: { flex: 1, padding: spacing.md, borderWidth: 1, borderColor: colors.borderLight, borderRadius: 12, alignItems: "center" },
   paymentActive: { borderColor: colors.primary, backgroundColor: "rgba(95,168,211,0.1)" },
   paymentText: { fontFamily: typography.semiBold, color: colors.textMuted },

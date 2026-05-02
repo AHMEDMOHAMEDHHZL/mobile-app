@@ -168,7 +168,7 @@ export function MainTabNavigator() {
   const { userType } = useAuth();
   const tabStyles = getTabStyles(colors);
   const tabs = userType === "admin"
-    ? [BASE_TABS[0], ADMIN_TAB, BASE_TABS[5], BASE_TABS[6]]
+    ? [BASE_TABS[0], ADMIN_TAB, BASE_TABS[1], BASE_TABS[2], BASE_TABS[3], BASE_TABS[5], BASE_TABS[6]]
     : BASE_TABS;
   return (
     <Tab.Navigator
@@ -193,7 +193,7 @@ export function MainTabNavigator() {
       <Tab.Screen name="Services" component={ServicesScreen} />
       <Tab.Screen name="Orders"   component={OrdersScreen}   />
       <Tab.Screen name="Store"    component={StoreScreen}    />
-      <Tab.Screen name="Wallet"   component={WalletScreen}   />
+      {userType !== "admin" && <Tab.Screen name="Wallet" component={WalletScreen} />}
       <Tab.Screen name="Notifications" component={NotificationsScreen} />
       {userType === "admin" && <Tab.Screen name="Admin" component={AdminScreen} />}
       <Tab.Screen name="Profile"  component={ProfileScreen}  />

@@ -88,8 +88,12 @@ export const createServiceRequest = async (payload: any) => {
   if (payload instanceof FormData) {
     config.headers = { "Content-Type": "multipart/form-data" };
   }
-  const res = await api.post(path, payload, config);
-  return res.data;
+  try {
+    const res = await api.post(path, payload, config);
+    return res.data;
+  } catch (err) {
+    throw handleError(err);
+  }
 };
 
 export const fetchOrdersForRole = async (role: UserRole) => {

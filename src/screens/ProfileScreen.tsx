@@ -1,7 +1,7 @@
 // ─────────────────────────────────────────────────────────────────────────────
 // ProfileScreen — User profile and settings
 // ─────────────────────────────────────────────────────────────────────────────
-import { View, Text, StyleSheet, ScrollView, Pressable, Alert } from "react-native";
+import { View, Text, StyleSheet, Pressable, Alert, Platform } from "react-native";
 import { useNavigation } from "@react-navigation/native";
 import type { BottomTabNavigationProp } from "@react-navigation/bottom-tabs";
 import { useAuth } from "../auth/AuthContext";
@@ -18,10 +18,21 @@ export function ProfileScreen() {
   const { user, userType, logout } = useAuth();
   const navigation = useNavigation<BottomTabNavigationProp<MainTabParamList>>();
 
+  const doLogout = async () => {
+    await logout();
+  };
+
   const handleLogout = () => {
+    if (Platform.OS === "web" && typeof window !== "undefined") {
+      if (window.confirm("هل أنت متأكد من رغبتك في تسجيل الخروج؟")) {
+        void doLogout();
+      }
+      return;
+    }
+
     Alert.alert("تسجيل الخروج", "هل أنت متأكد من رغبتك في تسجيل الخروج؟", [
       { text: "إلغاء", style: "cancel" },
-      { text: "تسجيل الخروج", style: "destructive", onPress: () => logout() },
+      { text: "تسجيل الخروج", style: "destructive", onPress: () => void doLogout() },
     ]);
   };
 

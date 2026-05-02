@@ -82,12 +82,24 @@ export function HomeScreen() {
   const fadeAnim = useRef(new Animated.Value(1)).current;
 
   const fetchData = async () => {
-    try {
-      const [svcs, techs] = await Promise.all([getServices(), getTechnicians()]);
+    setLoading(true);
+    const [servicesResult, techniciansResult] = await Promise.allSettled([
+      getServices(),
+      getTechnicians(),
+    ]);
+
+    if (servicesResult.status === "fulfilled") {
+      const svcs = servicesResult.value;
       setServices(svcs.slice(0, 8));
+    }
+
+    if (techniciansResult.status === "fulfilled") {
+      const techs = techniciansResult.value;
       setTechnicians(techs.slice(0, 5));
-    } catch { /* silent */ }
-    finally { setLoading(false); setRefreshing(false); }
+    }
+
+    setLoading(false);
+    setRefreshing(false);
   };
 
   useEffect(() => { fetchData(); }, []);
@@ -125,7 +137,8 @@ export function HomeScreen() {
       <ImageBackground
         source={slide.image}
         style={styles.hero}
-        imageStyle={{ width: '100%', height: '100%', resizeMode: 'cover' }}
+        resizeMode="cover"
+        imageStyle={{ width: '100%', height: '100%' }}
       >
         {/* Overlay gradient */}
         <LinearGradient
@@ -204,6 +217,21 @@ export function HomeScreen() {
       </View>
 
       <View style={styles.body}>
+        <View style={styles.welcomeCard}>
+          <Text style={styles.welcomeKicker}>مرحباً بك في صنايعي</Text>
+          <Text style={styles.welcomeTitle}>أهلاً، {displayName}</Text>
+          <Text style={styles.welcomeText}>
+            {userType === "admin"
+              ? "لوحة الإدارة جاهزة لمتابعة المستخدمين والطلبات والمراجعات من الموبايل."
+              : "اختار خدمة، تابع طلباتك، وابدأ حجزك في خطوات بسيطة."}
+          </Text>
+          {userType === "admin" ? (
+            <Pressable style={styles.welcomeBtn} onPress={() => tabNavigation.navigate("Admin")}>
+              <Text style={styles.welcomeBtnText}>فتح لوحة الإدارة</Text>
+            </Pressable>
+          ) : null}
+        </View>
+
         {/* ══════════════ SERVICES SECTION ══════════════ */}
         {services.length > 0 && (
           <View style={styles.servicesSection}>
@@ -482,6 +510,48 @@ const getStyles = (colors: any) => StyleSheet.create({
 
   // ── Body
   body: { padding: spacing.lg, gap: spacing.xl },
+
+  welcomeCard: {
+    backgroundColor: colors.bgApp,
+    borderRadius: radius.card,
+    padding: spacing.lg,
+    gap: spacing.sm,
+    borderWidth: 1,
+    borderColor: colors.borderLight,
+    boxShadow: "0 2px 10px rgba(11,30,51,0.06)",
+  },
+  welcomeKicker: {
+    fontFamily: typography.semiBold,
+    fontSize: typography.small,
+    color: colors.primary,
+    textAlign: "right",
+  },
+  welcomeTitle: {
+    fontFamily: typography.bold,
+    fontSize: 20,
+    color: colors.textHeading,
+    textAlign: "right",
+  },
+  welcomeText: {
+    fontFamily: typography.regular,
+    fontSize: typography.body,
+    color: colors.textMuted,
+    textAlign: "right",
+    lineHeight: 22,
+  },
+  welcomeBtn: {
+    alignSelf: "flex-end",
+    backgroundColor: colors.primary,
+    borderRadius: 10,
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.lg,
+    marginTop: spacing.xs,
+  },
+  welcomeBtnText: {
+    fontFamily: typography.bold,
+    fontSize: typography.small,
+    color: "#FFF",
+  },
 
   // ── Sections
   section: {
