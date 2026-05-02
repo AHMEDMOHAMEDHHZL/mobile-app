@@ -1,4 +1,5 @@
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
+import { AuthHomeScreen } from "../screens/AuthHomeScreen";
 import { LoginScreen } from "../screens/LoginScreen";
 import { RegisterScreen } from "../screens/RegisterScreen";
 import { VerifyOtpScreen } from "../screens/VerifyOtpScreen";
@@ -6,6 +7,7 @@ import { typography } from "../theme";
 import { useTheme } from "../providers/ThemeProvider";
 
 export type AuthStackParamList = {
+  AuthHome: undefined;
   Login: undefined;
   Register: undefined;
   VerifyOtp: { email: string; is_new?: boolean };
@@ -22,6 +24,7 @@ export function AuthNavigator() {
         contentStyle: { backgroundColor: colors.bgApp },
       }}
     >
+      <Stack.Screen name="AuthHome" component={AuthHomeScreen} />
       <Stack.Screen name="Login" component={LoginScreen} />
       <Stack.Screen name="Register" component={RegisterScreen} />
       <Stack.Screen name="VerifyOtp" component={VerifyOtpScreen} />

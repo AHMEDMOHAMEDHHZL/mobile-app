@@ -42,8 +42,8 @@ export function TechCard({ tech, onPress, onRequest, style }: {
   onRequest: () => void;
   style?: any;
 }) {
-  const { colors } = useTheme();
-  const tc = getTcStyles(colors);
+  const { colors, isDark } = useTheme();
+  const tc = getTcStyles(colors, isDark);
   const govName = typeof tech.governorate === "object" && tech.governorate !== null
     ? (tech.governorate as any).name
     : tech.governorate;
@@ -135,8 +135,8 @@ export function ServiceCardItem({
   style?: any;
   variant?: "default" | "homeCompact";
 }) {
-  const { colors } = useTheme();
-  const sc = getScStyles(colors);
+  const { colors, isDark } = useTheme();
+  const sc = getScStyles(colors, isDark);
   const isCompact = variant === "homeCompact";
   return (
     <Pressable
@@ -190,8 +190,8 @@ export function ServiceCardItem({
 // ─── Main Screen
 export function ServicesScreen() {
   const { colors, isDark } = useTheme();
-  const sc = getScStyles(colors);
-  const sh = getShStyles(colors);
+  const sc = getScStyles(colors, isDark);
+  const sh = getShStyles(colors, isDark);
   const navigation = useNavigation<Nav>();
 
   const [services, setServices]         = useState<Service[]>([]);
@@ -390,9 +390,9 @@ export function ServicesScreen() {
 }
 
 // ─── Service Card Styles
-const getScStyles = (colors: any) => StyleSheet.create({
+const getScStyles = (colors: any, isDark: boolean) => StyleSheet.create({
   searchRow: {
-    backgroundColor: colors.white,
+    backgroundColor: colors.bgApp,
     paddingHorizontal: spacing.lg,
     paddingVertical: spacing.md,
     borderBottomWidth: 1,
@@ -430,13 +430,13 @@ const getScStyles = (colors: any) => StyleSheet.create({
   row: { gap: spacing.md, justifyContent: "space-between" },
   card: {
     flex: 0.48,
-    backgroundColor: colors.white,
+    backgroundColor: colors.bgApp,
     borderRadius: 20,
     marginBottom: spacing.md,
     overflow: "hidden",
     borderWidth: 1,
-    borderColor: "rgba(0,0,0,0.06)",
-    boxShadow: "0 4px 20px rgba(0,0,0,0.05)",
+    borderColor: colors.borderLight,
+    boxShadow: isDark ? "0 4px 20px rgba(0,0,0,0.24)" : "0 4px 20px rgba(0,0,0,0.05)",
     alignItems: "center",
     paddingBottom: spacing.md,
   },
@@ -451,12 +451,12 @@ const getScStyles = (colors: any) => StyleSheet.create({
     width: 60,
     height: 60,
     borderRadius: 30,
-    backgroundColor: "#EBF4FB",
+    backgroundColor: isDark ? "rgba(126,200,240,0.12)" : "#EBF4FB",
     alignItems: "center",
     justifyContent: "center",
     marginBottom: spacing.sm,
     borderWidth: 2,
-    borderColor: "rgba(95,168,211,0.15)",
+    borderColor: isDark ? "rgba(126,200,240,0.28)" : "rgba(95,168,211,0.15)",
     overflow: "hidden",
   },
   icon: { width: 52, height: 52 },
@@ -499,9 +499,9 @@ const getScStyles = (colors: any) => StyleSheet.create({
     borderRadius: 16,
     marginBottom: 0,
     paddingBottom: spacing.sm,
-    backgroundColor: colors.white,
-    borderColor: "rgba(95,168,211,0.28)",
-    boxShadow: "0 8px 20px rgba(11,30,51,0.14)",
+    backgroundColor: colors.bgApp,
+    borderColor: isDark ? "rgba(126,200,240,0.24)" : "rgba(95,168,211,0.28)",
+    boxShadow: isDark ? "0 8px 20px rgba(0,0,0,0.28)" : "0 8px 20px rgba(11,30,51,0.14)",
   },
   homeCompactIconBox: {
     width: 58,
@@ -509,8 +509,8 @@ const getScStyles = (colors: any) => StyleSheet.create({
     borderRadius: radius.full,
     marginTop: spacing.sm,
     marginBottom: spacing.xs,
-    backgroundColor: "#EEF6FC",
-    borderColor: "rgba(95,168,211,0.32)",
+    backgroundColor: isDark ? "rgba(126,200,240,0.12)" : "#EEF6FC",
+    borderColor: isDark ? "rgba(126,200,240,0.32)" : "rgba(95,168,211,0.32)",
   },
   homeCompactIcon: { width: 50, height: 50 },
   homeCompactEmoji: { fontSize: 24 },
@@ -543,14 +543,14 @@ const getScStyles = (colors: any) => StyleSheet.create({
 });
 
 // ─── Technician Card Styles
-const getTcStyles = (colors: any) => StyleSheet.create({
+const getTcStyles = (colors: any, isDark: boolean) => StyleSheet.create({
   card: {
-    backgroundColor: colors.white,
+    backgroundColor: colors.bgApp,
     borderRadius: radius.card,
     overflow: "hidden",
     borderWidth: 1,
     borderColor: colors.borderLight,
-    boxShadow: "0 4px 16px rgba(11,30,51,0.07)",
+    boxShadow: isDark ? "0 4px 16px rgba(0,0,0,0.30)" : "0 4px 16px rgba(11,30,51,0.07)",
     gap: spacing.sm,
     paddingBottom: spacing.md,
   },
@@ -582,7 +582,7 @@ const getTcStyles = (colors: any) => StyleSheet.create({
   name: { fontFamily: typography.bold, fontSize: typography.body, color: colors.textHeading, textAlign: "right" },
   service: { fontFamily: typography.regular, fontSize: typography.tiny, color: colors.primary, textAlign: "right" },
   ratingBox: {
-    backgroundColor: "#FFF8E1",
+    backgroundColor: isDark ? "rgba(245,158,11,0.16)" : "#FFF8E1",
     paddingHorizontal: spacing.sm,
     paddingVertical: 4,
     borderRadius: radius.full,
@@ -603,7 +603,10 @@ const getTcStyles = (colors: any) => StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.borderLight,
   },
-  priceChip: { backgroundColor: "#E8F5E9", borderColor: "#A5D6A7" },
+  priceChip: {
+    backgroundColor: isDark ? "rgba(76,175,80,0.14)" : "#E8F5E9",
+    borderColor: isDark ? "rgba(76,175,80,0.35)" : "#A5D6A7",
+  },
   chipText: { fontFamily: typography.regular, fontSize: typography.tiny, color: colors.textMuted },
   desc: {
     fontFamily: typography.regular,
@@ -617,7 +620,7 @@ const getTcStyles = (colors: any) => StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    backgroundColor: colors.navyDeep,
+    backgroundColor: isDark ? colors.primary : colors.navyDeep,
     marginHorizontal: spacing.md,
     borderRadius: radius.cardSm,
     paddingVertical: spacing.md,
@@ -629,7 +632,7 @@ const getTcStyles = (colors: any) => StyleSheet.create({
 });
 
 // ─── Sub-header styles (when service selected)
-const getShStyles = (colors: any) => StyleSheet.create({
+const getShStyles = (colors: any, isDark: boolean) => StyleSheet.create({
   header: {
     backgroundColor: colors.navyDeep,
     paddingHorizontal: spacing.lg,
@@ -653,7 +656,7 @@ const getShStyles = (colors: any) => StyleSheet.create({
     textAlign: "right",
   },
   searchRow: {
-    backgroundColor: colors.white,
+    backgroundColor: colors.bgApp,
     paddingHorizontal: spacing.lg,
     paddingVertical: spacing.sm,
     borderBottomWidth: 1,
@@ -670,7 +673,7 @@ const getShStyles = (colors: any) => StyleSheet.create({
     borderWidth: 1.5,
     borderColor: colors.borderLight,
   },
-  modeScroll: { flexGrow: 0, backgroundColor: colors.white },
+  modeScroll: { flexGrow: 0, backgroundColor: colors.bgApp },
   modeRow: {
     paddingHorizontal: spacing.lg,
     paddingVertical: spacing.sm,
@@ -687,7 +690,7 @@ const getShStyles = (colors: any) => StyleSheet.create({
     borderColor: colors.borderLight,
     backgroundColor: colors.bgSection,
   },
-  modeActive: { backgroundColor: colors.navyDeep, borderColor: colors.navyDeep },
+  modeActive: { backgroundColor: isDark ? colors.primary : colors.navyDeep, borderColor: isDark ? colors.primary : colors.navyDeep },
   modeText: { fontFamily: typography.semiBold, fontSize: typography.small, color: colors.textMuted },
   modeTextActive: { color: "#FFF" },
   countRow: {

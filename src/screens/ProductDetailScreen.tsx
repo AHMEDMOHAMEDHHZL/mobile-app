@@ -14,6 +14,7 @@ import { spacing, typography, radius } from "../theme";
 import { useTheme } from "../providers/ThemeProvider";
 import { api as client } from "../api/client";
 import type { RootStackParamList } from "../navigation/RootNavigator";
+import { firstMediaUrl } from "../utils/media";
 
 type RouteT = RouteProp<RootStackParamList, "ProductDetail">;
 type NavT   = NativeStackNavigationProp<RootStackParamList>;
@@ -30,6 +31,7 @@ export function ProductDetailScreen() {
   const [error, setError]       = useState<string | null>(null);
   const [qty, setQty]           = useState(1);
   const [adding, setAdding]     = useState(false);
+  const [selectedImage, setSelectedImage] = useState<string | null>(null);
 
   useEffect(() => {
     client.get(`/store/products/${id}`)
@@ -78,19 +80,33 @@ export function ProductDetailScreen() {
   const catName = typeof product.category === "object" && product.category !== null
     ? product.category.name : product.category;
   const inStock = (product.stock ?? 1) > 0;
+  const images = getProductImages(product);
+  const heroImage = selectedImage || images[0] || null;
 
   return (
     <ScrollView style={s.scroll} contentContainerStyle={s.content} showsVerticalScrollIndicator={false}>
       {/* ── Product Image ── */}
       <View style={s.imgBox}>
-        {product.image ? (
-          <Image source={{ uri: product.image }} style={s.img} resizeMode="contain" />
+        {heroImage ? (
+          <Image source={{ uri: heroImage }} style={s.img} resizeMode="contain" />
         ) : (
           <View style={s.imgPlaceholder}>
             <Text style={s.imgEmoji}>🔩</Text>
           </View>
         )}
       </View>
+      {images.length > 1 ? (
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.galleryRail}>
+          {images.map((image, index) => {
+            const active = (selectedImage || images[0]) === image;
+            return (
+              <Pressable key={`${image}-${index}`} style={[s.thumbBox, active && s.thumbActive]} onPress={() => setSelectedImage(image)}>
+                <Image source={{ uri: image }} style={s.thumbImg} resizeMode="cover" />
+              </Pressable>
+            );
+          })}
+        </ScrollView>
+      ) : null}
 
       {/* ── Info Card ── */}
       <View style={s.infoCard}>
@@ -108,6 +124,9 @@ export function ProductDetailScreen() {
 
         {/* Name */}
         <Text style={s.name}>{product.name}</Text>
+        {product.company ? (
+          <Text style={s.companyName}>{product.company.company_name || product.company.name}</Text>
+        ) : null}
 
         {/* Price */}
         <Text style={s.price}>{Number(product.price).toFixed(2)} جنيه</Text>
@@ -176,11 +195,39 @@ export function ProductDetailScreen() {
   );
 }
 
+function getProductImages(product: any) {
+  const rawImages = normalizeImages(product.images);
+  const candidates = [
+    product.main_image_url,
+    product.image_url,
+    product.image,
+    product.main_image,
+    ...(Array.isArray(product.images_urls) ? product.images_urls : []),
+    ...rawImages,
+  ];
+  const resolved = candidates
+    .map((item) => firstMediaUrl(item))
+    .filter(Boolean) as string[];
+  return Array.from(new Set(resolved));
+}
+
+function normalizeImages(value: unknown) {
+  if (!value) return [];
+  if (Array.isArray(value)) return value.filter(Boolean);
+  if (typeof value !== "string") return [];
+  try {
+    const parsed = JSON.parse(value);
+    return Array.isArray(parsed) ? parsed.filter(Boolean) : [];
+  } catch {
+    return value.split(",").map((item) => item.trim()).filter(Boolean);
+  }
+}
+
 const getStyles = (colors: any) => StyleSheet.create({
   scroll: { flex: 1, backgroundColor: colors.bgSection },
   content: { paddingBottom: spacing.xxl },
   center: { flex: 1, alignItems: "center", justifyContent: "center", gap: spacing.md, padding: spacing.xl },
-  errorText: { fontFamily: typography.semiBold, fontSize: typography.body, color: colors.danger, textAlign: "center" },
+  errorText: { fontFamily: typography.semiBold, fontSize: typography.body, color: colors.error, textAlign: "center" },
   retryBtn: {
     backgroundColor: colors.navyDeep, paddingHorizontal: spacing.xl,
     paddingVertical: spacing.md, borderRadius: radius.card,
@@ -189,16 +236,20 @@ const getStyles = (colors: any) => StyleSheet.create({
   imgBox: {
     width: "100%",
     aspectRatio: 1.2,
-    backgroundColor: colors.white,
+    backgroundColor: colors.bgApp,
     borderBottomWidth: 1,
     borderBottomColor: colors.borderLight,
   },
   img: { width: "100%", height: "100%" },
   imgPlaceholder: { width: "100%", height: "100%", alignItems: "center", justifyContent: "center" },
   imgEmoji: { fontSize: 80 },
+  galleryRail: { paddingHorizontal: spacing.lg, paddingTop: spacing.md, gap: spacing.sm, flexDirection: "row-reverse" },
+  thumbBox: { width: 64, height: 64, borderRadius: radius.cardSm, borderWidth: 1, borderColor: colors.borderLight, overflow: "hidden", backgroundColor: colors.bgApp },
+  thumbActive: { borderColor: colors.primary, borderWidth: 2 },
+  thumbImg: { width: "100%", height: "100%" },
   infoCard: {
     margin: spacing.lg,
-    backgroundColor: colors.white,
+    backgroundColor: colors.bgApp,
     borderRadius: radius.card,
     padding: spacing.lg,
     gap: spacing.md,
@@ -229,10 +280,11 @@ const getStyles = (colors: any) => StyleSheet.create({
     textAlign: "right",
     lineHeight: 32,
   },
+  companyName: { fontFamily: typography.semiBold, fontSize: typography.small, color: colors.textMuted, textAlign: "right" },
   price: {
     fontFamily: typography.bold,
     fontSize: 28,
-    color: colors.navyDeep,
+    color: colors.textHeading,
     textAlign: "right",
   },
   descBox: { backgroundColor: colors.bgSection, borderRadius: radius.sm, padding: spacing.md, gap: spacing.xs },
@@ -255,7 +307,7 @@ const getStyles = (colors: any) => StyleSheet.create({
     borderRadius: radius.sm, padding: spacing.md,
   },
   totalLabel: { fontFamily: typography.semiBold, fontSize: typography.body, color: colors.primary },
-  totalValue: { fontFamily: typography.bold, fontSize: typography.h3, color: colors.navyDeep },
+  totalValue: { fontFamily: typography.bold, fontSize: typography.h3, color: colors.textHeading },
   cartBtn: {
     backgroundColor: colors.navyDeep,
     borderRadius: radius.card,

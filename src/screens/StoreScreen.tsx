@@ -14,6 +14,7 @@ import { spacing, typography, radius } from "../theme";
 import { useTheme } from "../providers/ThemeProvider";
 import { api as client } from "../api/client";
 import type { RootStackParamList } from "../navigation/RootNavigator";
+import { firstMediaUrl } from "../utils/media";
 
 type Nav = NativeStackNavigationProp<RootStackParamList>;
 
@@ -23,7 +24,13 @@ interface Product {
   price: number;
   description?: string;
   image?: string;
+  image_url?: string;
+  main_image?: string;
+  main_image_url?: string;
+  images?: string[] | string | null;
+  images_urls?: string[] | null;
   category?: { name: string } | string;
+  company?: { company_name?: string; name?: string };
   stock?: number;
 }
 
@@ -45,7 +52,7 @@ export function StoreScreen() {
     try {
       const res = await client.get("/store/products?per_page=50");
       const data = res.data?.data ?? res.data ?? [];
-      setProducts(Array.isArray(data) ? data : []);
+      setProducts(Array.isArray(data) ? data : (Array.isArray(data?.data) ? data.data : []));
       setError(null);
     } catch (e: any) {
       setError(e?.message || "تعذر تحميل المتجر");
@@ -141,8 +148,8 @@ export function StoreScreen() {
             >
               {/* Product image */}
               <View style={s.imgBox}>
-                {item.image ? (
-                  <Image source={{ uri: item.image }} style={s.img} resizeMode="cover" />
+                {getProductImage(item) ? (
+                  <Image source={{ uri: getProductImage(item)! }} style={s.img} resizeMode="cover" />
                 ) : (
                   <View style={s.imgPlaceholder}>
                     <Text style={s.imgEmoji}>🔩</Text>
@@ -159,6 +166,9 @@ export function StoreScreen() {
                       ? (item.category as any).name
                       : item.category}
                   </Text>
+                ) : null}
+                {item.company ? (
+                  <Text style={s.companyName} numberOfLines={1}>{item.company.company_name || item.company.name}</Text>
                 ) : null}
                 <View style={s.priceRow}>
                   <Text style={s.price}>{Number(item.price).toFixed(0)} ج</Text>
@@ -181,11 +191,34 @@ export function StoreScreen() {
   );
 }
 
+function getProductImage(product: Product) {
+  const gallery = normalizeImages(product.images);
+  return firstMediaUrl(
+    product.main_image_url,
+    product.image_url,
+    product.image,
+    product.main_image,
+    product.images_urls?.[0],
+    gallery[0]
+  );
+}
+
+function normalizeImages(value: Product["images"]) {
+  if (!value) return [];
+  if (Array.isArray(value)) return value.filter(Boolean);
+  try {
+    const parsed = JSON.parse(value);
+    return Array.isArray(parsed) ? parsed.filter(Boolean) : [];
+  } catch {
+    return String(value).split(",").map((item) => item.trim()).filter(Boolean);
+  }
+}
+
 const getStyles = (colors: any) => StyleSheet.create({
   searchBar: {
     flexDirection: "row-reverse",
     alignItems: "center",
-    backgroundColor: colors.white,
+    backgroundColor: colors.bgApp,
     marginHorizontal: spacing.lg,
     marginVertical: spacing.md,
     borderRadius: radius.full,
@@ -202,7 +235,7 @@ const getStyles = (colors: any) => StyleSheet.create({
     color: colors.textBase,
     paddingVertical: spacing.sm + 2,
   },
-  catScroll: { flexGrow: 0, backgroundColor: colors.white },
+  catScroll: { flexGrow: 0, backgroundColor: colors.bgApp },
   catList: {
     paddingHorizontal: spacing.lg,
     paddingVertical: spacing.sm,
@@ -223,7 +256,7 @@ const getStyles = (colors: any) => StyleSheet.create({
   row: { gap: spacing.md, justifyContent: "space-between" },
   card: {
     flex: 0.48,
-    backgroundColor: colors.white,
+    backgroundColor: colors.bgApp,
     borderRadius: radius.card,
     marginBottom: spacing.md,
     overflow: "hidden",
@@ -239,7 +272,7 @@ const getStyles = (colors: any) => StyleSheet.create({
     height: "100%",
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: "#EBF4FB",
+    backgroundColor: colors.bgSection,
   },
   imgEmoji: { fontSize: 40 },
   cardBody: { padding: spacing.sm, gap: spacing.xs },
@@ -256,8 +289,9 @@ const getStyles = (colors: any) => StyleSheet.create({
     color: colors.primary,
     textAlign: "right",
   },
+  companyName: { fontFamily: typography.regular, fontSize: typography.tiny, color: colors.textMuted, textAlign: "right" },
   priceRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginTop: 2 },
-  price: { fontFamily: typography.bold, fontSize: typography.body, color: colors.navyDeep },
+  price: { fontFamily: typography.bold, fontSize: typography.body, color: colors.textHeading },
   stockBadge: {
     backgroundColor: "#E8F5E9",
     paddingHorizontal: spacing.sm,

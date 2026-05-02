@@ -10,12 +10,13 @@ import { getTechnicianById, type Technician } from "../api/technicians";
 import { spacing, typography, radius } from "../theme";
 import { useTheme } from "../providers/ThemeProvider";
 import type { RootStackParamList } from "../navigation/RootNavigator";
+import { firstMediaUrl } from "../utils/media";
 
 type Nav = NativeStackNavigationProp<RootStackParamList>;
 
 export function TechnicianDetailScreen() {
   const { colors, isDark } = useTheme();
-  const styles = getStyles(colors);
+  const styles = getStyles(colors, isDark);
   const route = useRoute<any>();
   const navigation = useNavigation<Nav>();
   const { id } = route.params;
@@ -33,12 +34,26 @@ export function TechnicianDetailScreen() {
 
   if (loading) return <LoadingState />;
   if (error || !tech) return <ErrorState message={error || "لم يتم العثور على الصنايعي"} />;
+  const avatarUrl = firstMediaUrl(
+    (tech as any).profile_photo_url,
+    (tech as any).profile_photo,
+    (tech as any).avatar_url,
+    (tech as any).avatar,
+    (tech as any).image_url,
+    (tech as any).image,
+    tech.profile_image_url,
+    tech.profile_image
+  );
 
   return (
     <Screen scrollable>
       <View style={styles.header}>
         <View style={styles.avatar}>
-          <Text style={styles.avatarText}>{(tech.name || "ص").charAt(0)}</Text>
+          {avatarUrl ? (
+            <Image source={{ uri: avatarUrl }} style={styles.avatarImg} resizeMode="cover" />
+          ) : (
+            <Text style={styles.avatarText}>{(tech.name || "ص").charAt(0)}</Text>
+          )}
         </View>
         <Text style={styles.name}>{tech.name}</Text>
         <Text style={styles.service}>{tech.service?.name || "خدمات عامة"}</Text>
@@ -78,20 +93,21 @@ export function TechnicianDetailScreen() {
   );
 }
 
-const getStyles = (colors: any) => StyleSheet.create({
-  header: { alignItems: "center", padding: spacing.xl, backgroundColor: colors.white, borderBottomWidth: 1, borderColor: colors.borderLight },
-  avatar: { width: 90, height: 90, borderRadius: radius.full, backgroundColor: colors.primary, alignItems: "center", justifyContent: "center", marginBottom: spacing.md },
+const getStyles = (colors: any, isDark: boolean) => StyleSheet.create({
+  header: { alignItems: "center", padding: spacing.xl, backgroundColor: colors.bgApp, borderBottomWidth: 1, borderColor: colors.borderLight },
+  avatar: { width: 90, height: 90, borderRadius: radius.full, backgroundColor: colors.primary, alignItems: "center", justifyContent: "center", marginBottom: spacing.md, overflow: "hidden", borderWidth: 2, borderColor: isDark ? "rgba(126,200,240,0.35)" : "rgba(95,168,211,0.22)" },
+  avatarImg: { width: "100%", height: "100%" },
   avatarText: { color: colors.white, fontSize: 40, fontFamily: typography.bold },
   name: { fontFamily: typography.bold, fontSize: typography.h2, color: colors.textHeading },
   service: { fontFamily: typography.regular, fontSize: typography.body, color: colors.primary, marginTop: spacing.xs },
   meta: { flexDirection: "row", gap: spacing.lg, marginTop: spacing.sm },
   rating: { fontFamily: typography.semiBold, fontSize: typography.body, color: colors.textHeading },
   location: { fontFamily: typography.regular, fontSize: typography.body, color: colors.textMuted },
-  body: { padding: spacing.lg, gap: spacing.lg },
+  body: { padding: spacing.lg, gap: spacing.lg, backgroundColor: colors.bgSection },
   sectionTitle: { fontFamily: typography.bold, fontSize: typography.h4, color: colors.textHeading, textAlign: "right", marginBottom: spacing.sm },
   desc: { fontFamily: typography.regular, fontSize: typography.body, color: colors.textMuted, textAlign: "right", lineHeight: 22 },
   detailsGrid: { flexDirection: "row", marginTop: spacing.lg, borderTopWidth: 1, borderColor: colors.borderLight, paddingTop: spacing.md },
-  detailItem: { flex: 1, alignItems: "center", gap: 4 },
+  detailItem: { flex: 1, alignItems: "center", gap: 4, backgroundColor: colors.bgSection, borderRadius: radius.cardSm, padding: spacing.sm, marginHorizontal: 4 },
   detailLabel: { fontFamily: typography.regular, fontSize: typography.small, color: colors.textMuted },
   detailValue: { fontFamily: typography.bold, fontSize: typography.body, color: colors.textBase },
   requestBtn: { marginTop: spacing.md },
